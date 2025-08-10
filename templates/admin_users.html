@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block title %}Administrar Usuarios{% endblock %}
+{% block content %}
+<section>
+  <h2>Administración de Usuarios</h2>
+  <div class="card" style="margin: 12px 0; padding:12px;">
+    <h3>Crear usuario</h3>
+    <form method="post" action="{{ url_for('admin_users_create') }}" class="form-row" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+      <div>
+        <label>Usuario</label>
+        <input class="input" type="text" name="username" required />
+      </div>
+      <div>
+        <label>Contraseña</label>
+        <input class="input" type="password" name="password" required />
+      </div>
+      <button class="btn" type="submit">Crear</button>
+    </form>
+  </div>
+
+  <div class="card" style="padding:12px; overflow:auto;">
+    <h3>Usuarios</h3>
+    <table class="table">
+      <thead>
+        <tr><th>ID</th><th>Usuario</th><th>Maestro</th><th>Activo</th><th>Editar usuario</th><th>Permisos</th><th>Eliminar</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        {% set uid = u['id_user'] if u.get else u[0] %}
+        {% set uname = u['username'] if u.get else u[1] %}
+        {% set umaster = (u['is_master'] if u.get else u[2]) %}
+        {% set uactive = (u['is_active'] if u.get else u[3]) %}
+        <tr>
+          <td>{{ uid }}</td>
+          <td>{{ uname }}</td>
+          <td>{{ 'Sí' if umaster else 'No' }}</td>
+          <td>{{ 'Sí' if uactive else 'No' }}</td>
+          <td>
+            {% if not umaster %}
+            <form method="post" action="{{ url_for('admin_users_update') }}" style="display:flex; gap:6px; align-items:end; flex-wrap:wrap;">
+              <input type="hidden" name="id_user" value="{{ uid }}" />
+              <input class="input" type="text" name="username" placeholder="Nuevo usuario" />
+              <input class="input" type="password" name="password" placeholder="Nueva contraseña" />
+              <button class="btn" type="submit">Guardar</button>
+            </form>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+          <td>
+            {% if umaster %}
+              Todos los permisos (maestro)
+            {% else %}
+            <form method="post" action="{{ url_for('admin_users_perms') }}">
+              <input type="hidden" name="id_user" value="{{ uid }}" />
+              <table class="table" style="margin:6px 0;">
+                <thead>
+                  <tr><th>Sección</th><th>Editar</th><th>Ver</th><th>Extras</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Estado de Cuenta / Cargar y Procesar</strong></td>
+                    <td><input type="checkbox" name="perms" value="estado:upload" {{ 'checked' if grants.get(uid) and 'estado:upload' in grants.get(uid) else '' }}></td>
+                    <td><input type="checkbox" name="perms" value="estado:view" {{ 'checked' if grants.get(uid) and 'estado:view' in grants.get(uid) else '' }}></td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Estado de Cuenta / Ver Tabla</strong></td>
+                    <td></td>
+                    <td><input type="checkbox" name="perms" value="estado:view" {{ 'checked' if grants.get(uid) and 'estado:view' in grants.get(uid) else '' }}></td>
+                    <td><label><input type="checkbox" name="perms" value="estado:export" {{ 'checked' if grants.get(uid) and 'estado:export' in grants.get(uid) else '' }}> Exportar</label></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Estado de Cuenta / Anuladas</strong></td>
+                    <td></td>
+                    <td><input type="checkbox" name="perms" value="estado:anuladas:view" {{ 'checked' if grants.get(uid) and 'estado:anuladas:view' in grants.get(uid) else '' }}></td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Estado de Cuenta / Saldos Anteriores</strong></td>
+                    <td><input type="checkbox" name="perms" value="estado:saldos:manage" {{ 'checked' if grants.get(uid) and 'estado:saldos:manage' in grants.get(uid) else '' }}></td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Estado de Cuenta / Preferencias</strong></td>
+                    <td><input type="checkbox" name="perms" value="estado:prefs:manage" {{ 'checked' if grants.get(uid) and 'estado:prefs:manage' in grants.get(uid) else '' }}></td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Planilla de Sueldos / Registro de Trabajadores</strong></td>
+                    <td><input type="checkbox" disabled title="Edición se controla con planilla:edit"></td>
+                    <td><input type="checkbox" name="perms" value="planilla:empleados:view" {{ 'checked' if grants.get(uid) and 'planilla:empleados:view' in grants.get(uid) else '' }}></td>
+                    <td><label><input type="checkbox" name="perms" value="planilla:edit" {{ 'checked' if grants.get(uid) and 'planilla:edit' in grants.get(uid) else '' }}> Editar</label></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Planilla de Sueldos / Planilla mensual</strong></td>
+                    <td><input type="checkbox" name="perms" value="planilla:edit" {{ 'checked' if grants.get(uid) and 'planilla:edit' in grants.get(uid) else '' }}></td>
+                    <td><input type="checkbox" name="perms" value="planilla:periodo:view" {{ 'checked' if grants.get(uid) and 'planilla:periodo:view' in grants.get(uid) else '' }}></td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Dashboard</strong></td>
+                    <td></td>
+                    <td><input type="checkbox" name="perms" value="dashboard:view" {{ 'checked' if grants.get(uid) and 'dashboard:view' in grants.get(uid) else '' }}></td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+              <button class="btn" type="submit">Guardar</button>
+            </form>
+            {% endif %}
+          </td>
+          <td>
+            {% if not umaster %}
+            <form method="post" action="{{ url_for('admin_users_delete') }}" onsubmit="return confirm('¿Eliminar usuario?');">
+              <input type="hidden" name="id_user" value="{{ uid }}" />
+              <button class="btn danger" type="submit">Eliminar</button>
+            </form>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+

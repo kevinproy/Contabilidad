@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section>
+  <h2>Dashboard</h2>
+
+  <!-- KPIs principales -->
+  <div class="cards-row" style="flex-wrap:wrap; gap:12px;">
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-main">{{ total_clientes }}</div>
+      <div class="stat-sub">Clientes</div>
+    </div>
+    <div class="stat-card income">
+      <div class="stat-icon">💰</div>
+      <div class="stat-main">{{ total_saldo|es_num }}</div>
+      <div class="stat-sub">Saldo total</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-icon">⏰</div>
+      <div class="stat-main">{{ total_mora_docs }}</div>
+      <div class="stat-sub">Documentos en mora</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-icon">⚠️</div>
+      <div class="stat-main">{{ clientes_con_mora }}</div>
+      <div class="stat-sub">Clientes con mora</div>
+    </div>
+  </div>
+
+  <!-- Gráficos principales: Saldo y Mora -->
+  <div class="cards-row" style="margin-top:12px; gap:12px;">
+    <div class="card" style="flex:1; min-width:420px;">
+      <h3>Top saldos por cliente</h3>
+      <canvas id="chartSaldos" height="140"></canvas>
+    </div>
+    <div class="card" style="flex:1; min-width:420px;">
+      <h3>Top clientes por documentos en mora</h3>
+      <canvas id="chartMoraTop" height="140"></canvas>
+    </div>
+  </div>
+
+  <!-- Explorador de mora por cliente -->
+  <div class="card" style="margin-top:12px; display:flex; gap:16px; align-items:center;">
+    <div>
+      <label>Cliente</label>
+      <select id="clienteMora" class="input">
+        <option value="">Seleccione…</option>
+        {% for c in clientes %}
+        <option value="{{ c }}">{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div><strong>Docs en mora:</strong> <span id="moraCount">0</span></div>
+  </div>
+
+  <div class="card" style="margin-top:8px; overflow:auto;">
+    <table id="tablaMora" class="table">
+      <thead>
+        <tr><th>Doc.</th><th>Fecha</th><th>Vencimiento</th><th>Días</th><th>Monto</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div id="moraPager" style="display:flex; gap:6px; padding:8px; align-items:center; flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- Planilla anual -->
+  <div class="card" style="margin-top:12px;">
+    <h3>Total planilla por mes</h3>
+    <canvas id="chartPlanilla" height="140"></canvas>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function(){
+  // Chart saldos
+  const ctx1 = document.getElementById('chartSaldos').getContext('2d');
+  const chart1 = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: {{ chart_clients|tojson }},
+      datasets: [{ label: 'Saldo', data: {{ chart_saldos|tojson }}, backgroundColor: 'rgba(59,130,246,.6)' }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { legend: { display:false } } }
+  });
+
+  // Chart mora top
+  const ctxTop = document.getElementById('chartMoraTop').getContext('2d');
+  const chartTop = new Chart(ctxTop, {
+    type: 'bar',
+    data: {
+      labels: {{ mora_top_clients|tojson }},
+      datasets: [{ label: 'Docs en mora', data: {{ mora_top_counts|tojson }}, backgroundColor: 'rgba(239,68,68,.7)' }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { legend: { display:false } } }
+  });
+
+  // Chart planilla mensual
+  const ctx2 = document.getElementById('chartPlanilla').getContext('2d');
+  const chart2 = new Chart(ctx2, {
+    type: 'line',
+    data: {
+      labels: {{ months_labels|tojson }},
+      datasets: [{ label: 'Líquido pagable', data: {{ payroll_data|tojson }}, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,.25)', fill: true, tension:.25, pointRadius:3 }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { legend: { display:true } } }
+  });
+
+  // Mora por cliente
+  const select = document.getElementById('clienteMora');
+  const tbody = document.querySelector('#tablaMora tbody');
+  const moraCount = document.getElementById('moraCount');
+  const pager = document.getElementById('moraPager');
+  const moraCounts = {{ mora_counts|tojson }};
+  const PAGE_SIZE = 10;
+  let moraDocs = [];
+  let currentPage = 1;
+
+  function formatMonto(v){
+    return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v);
+  }
+
+  function renderMoraPage(page){
+    if (!Array.isArray(moraDocs)) return;
+    const totalPages = Math.max(1, Math.ceil(moraDocs.length / PAGE_SIZE));
+    currentPage = Math.min(Math.max(1, page || 1), totalPages);
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const end = start + PAGE_SIZE;
+    const rows = moraDocs.slice(start, end)
+      .map(d => `<tr><td>${d.docto}</td><td>${d.fecha}</td><td>${d.vencimiento}</td><td>${d.dias}</td><td>${formatMonto(d.monto)}</td></tr>`)
+      .join('');
+    tbody.innerHTML = rows || '<tr><td colspan="5" class="text-center">Sin datos</td></tr>';
+    renderPager(totalPages);
+  }
+
+  function renderPager(totalPages){
+    if (!pager) return;
+    if (totalPages <= 1){ pager.innerHTML = ''; return; }
+    const buttons = [];
+    buttons.push(`<button data-page="1" ${currentPage===1?'disabled':''}>«</button>`);
+    buttons.push(`<button data-page="${Math.max(1,currentPage-1)}" ${currentPage===1?'disabled':''}>‹</button>`);
+    for(let p=1; p<= totalPages; p++){
+      buttons.push(`<button data-page="${p}" ${p===currentPage?'style=\"font-weight:700; text-decoration:underline;\"':''}>${p}</button>`);
+    }
+    buttons.push(`<button data-page="${Math.min(totalPages,currentPage+1)}" ${currentPage===totalPages?'disabled':''}>›</button>`);
+    buttons.push(`<button data-page="${totalPages}" ${currentPage===totalPages?'disabled':''}>»</button>`);
+    pager.innerHTML = buttons.join('');
+  }
+
+  pager.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-page]');
+    if(!btn) return;
+    const page = parseInt(btn.getAttribute('data-page')) || 1;
+    renderMoraPage(page);
+  });
+  select.addEventListener('change', () => {
+    const cliente = select.value;
+    if (!cliente) { tbody.innerHTML=''; pager.innerHTML=''; moraCount.textContent='0'; moraDocs = []; return; }
+    fetch(`/dashboard/mora_docs?cliente=${encodeURIComponent(cliente)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data || data.ok === false) return;
+        moraDocs = Array.isArray(data.docs) ? data.docs : [];
+        moraCount.textContent = moraCounts[cliente] || moraDocs.length;
+        renderMoraPage(1);
+      });
+  });
+})();
+ </script>
+{% endblock %}

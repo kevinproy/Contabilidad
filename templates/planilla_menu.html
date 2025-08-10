@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Planilla de Sueldos{% endblock %}
+{% block content %}
+<section>
+  <h2>Planilla de Sueldos</h2>
+  <div class="card">
+    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+      <a class="button" href="{{ url_for('planilla_empleados') }}">Registro de Trabajadores</a>
+      <a class="button" href="{{ url_for('planilla_periodo') }}">Planilla mensual</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+

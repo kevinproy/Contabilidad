@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Preferencias - Días de Mora{% endblock %}
+{% block content %}
+<section>
+  <h2>Preferencias por Cliente (Días de Mora)</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Días de Mora</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in filas %}
+        <tr>
+          <td>{{ row['nombre_completo'] }}</td>
+          <td>
+            <form method="post" action="{{ url_for('guardar_prefs_clientes') }}" style="display:flex; gap:8px; align-items:center;">
+              <input type="hidden" name="cliente" value="{{ row['nombre_completo'] }}">
+              <input type="number" name="dias" min="0" value="{{ row['dias_mora'] }}" style="width:100px;">
+              <button class="button" type="submit">Guardar</button>
+            </form>
+          </td>
+          <td></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+

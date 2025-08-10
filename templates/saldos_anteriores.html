@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Saldos Anteriores{% endblock %}
+{% block content %}
+  <section>
+    <h2>Saldos Anteriores por Cliente</h2>
+
+    <div class="card">
+      <form method="post" action="{{ url_for('guardar_saldo_anterior') }}" class="filters">
+        <div class="filter-row">
+          <div class="filter-item">
+            <label>Cliente</label>
+            <select name="cliente" required>
+              <option value="">Seleccione...</option>
+              {% for c in clientes %}
+              <option value="{{ c }}">{{ c }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>Monto</label>
+            <input name="monto" placeholder="0.00" required>
+          </div>
+          <div class="filter-item">
+            <label>Lado</label>
+            <select name="lado">
+              <option value="haber">Haber</option>
+              <option value="debe">Debe</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>Fecha</label>
+            <input type="date" name="fecha" value="2025-01-01">
+          </div>
+          <div class="filter-actions">
+            <button class="button" type="submit">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Fecha</th>
+            <th>Lado</th>
+            <th>Monto</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in filas %}
+          <tr>
+            <td>{{ row.CLIENTE }}</td>
+            <td>{{ row.FECHA }}</td>
+            <td>{{ row.LADO|upper }}</td>
+            <td>{{ '{:,.2f}'.format(row.MONTO) }}</td>
+            <td>
+              <form method="post" action="{{ url_for('eliminar_saldo_anterior') }}" onsubmit="return confirm('¿Eliminar saldo anterior?');">
+                <input type="hidden" name="cliente" value="{{ row.CLIENTE }}">
+                <button class="button danger" type="submit">Eliminar</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}
+
+

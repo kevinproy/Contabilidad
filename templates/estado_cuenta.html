@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}Estado de Cuenta{% endblock %}
+{% block content %}
+  <section>
+    <h2>Estado de Cuenta - Cargar y Procesar</h2>
+    <div class="card">
+      <h3>Cargar y Procesar Archivo Excel</h3>
+      <form id="uploadForm" action="{{ url_for('estado.cargar_estado_cuenta') }}" method="post" enctype="multipart/form-data">
+        <input type="file" id="excelInput" name="excel" accept=".xlsx" required>
+        <button id="btnUpload" type="submit">Cargar</button>
+      </form>
+      <div id="uploadProgress" style="display:none; margin-top:8px;">
+        <div style="font-weight:bold; margin-bottom:4px;">Cargando...</div>
+        <div style="background:#eee; height:10px; width:100%; border-radius:6px; overflow:hidden;">
+          <div id="uploadBar" style="height:10px; width:0%; background:#3b82f6;"></div>
+        </div>
+        <div id="uploadPct" style="font-size:12px; margin-top:4px;">0%</div>
+      </div>
+      <div id="uploadResult" class="upload-summary" style="display:none; margin-top:10px;"></div>
+      {% if resumen %}
+      <div class="upload-summary">
+        <div><strong>Fecha:</strong> {{ resumen.fecha or '' }} <strong>Hora:</strong> {{ resumen.hora or '' }}</div>
+        <div><strong>Total registros en DB:</strong> {{ resumen.total_registros or 0 }}</div>
+        <div><strong>Procesados:</strong> {{ resumen.procesados }}</div>
+        <div><strong>Agregados:</strong> {{ resumen.agregados }}</div>
+        <div><strong>Repetidos:</strong> {{ resumen.duplicados }}</div>
+        <div><strong>No agregados:</strong> {{ resumen.no_agregados or 0 }}</div>
+        {% if resumen.errores and resumen.errores|length > 0 %}
+          <div class="errors">
+            <strong>Errores:</strong>
+            <ul>
+              {% for e in resumen.errores %}
+              <li>{{ e }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  <script>
+  (function(){
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('excelInput');
+    const progressWrap = document.getElementById('uploadProgress');
+    const bar = document.getElementById('uploadBar');
+    const pct = document.getElementById('uploadPct');
+    if (!form || !fileInput) return;
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      if (!fileInput.files || fileInput.files.length === 0) { form.submit(); return; }
+      const file = fileInput.files[0];
+      const data = new FormData();
+      data.append('excel', file);
+      progressWrap.style.display = 'block';
+      bar.style.width = '0%'; pct.textContent = '0%';
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', form.action, true);
+      xhr.upload.onprogress = function(ev){
+        if (ev.lengthComputable) {
+          const p = Math.round((ev.loaded / ev.total) * 100);
+          bar.style.width = p + '%';
+          pct.textContent = p + '%';
+        }
+      };
+      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+      xhr.onload = function(){
+        progressWrap.style.display = 'none';
+        try {
+          const data = JSON.parse(xhr.responseText || '{}');
+          if (xhr.status >= 200 && xhr.status < 300) {
+            // pintar resumen sin recargar
+            const wrap = document.getElementById('uploadResult');
+            wrap.style.display = 'block';
+            wrap.className = 'upload-summary';
+            wrap.innerHTML = `
+              <div><strong>Fecha:</strong> ${data.fecha ?? ''} <strong>Hora:</strong> ${data.hora ?? ''}</div>
+              <div><strong>Total registros en DB:</strong> ${data.total_registros ?? 0}</div>
+              <div><strong>Procesados:</strong> ${data.procesados ?? 0}</div>
+              <div><strong>Agregados:</strong> ${data.agregados ?? 0}</div>
+              <div><strong>Repetidos:</strong> ${data.duplicados ?? 0}</div>
+              <div><strong>No agregados:</strong> ${data.no_agregados ?? 0}</div>
+              ${Array.isArray(data.errores) && data.errores.length ? `<div class="errors"><strong>Errores:</strong><ul>${data.errores.map(e => `<li>${String(e)}</li>`).join('')}</ul></div>` : ''}
+            `;
+            // asegurar que quede debajo del formulario
+            if (wrap.parentNode !== form.parentNode) {
+              form.parentNode.insertBefore(wrap, form.nextSibling);
+            }
+          } else {
+            const wrap = document.getElementById('uploadResult');
+            wrap.style.display = 'block';
+            const msg = (data && Array.isArray(data.errores) && data.errores[0]) ? data.errores[0] : ('Código ' + xhr.status);
+            wrap.innerHTML = `<div class="errors"><strong>Error al cargar:</strong> ${msg}</div>`;
+          }
+        } catch(e) {
+          // Fallback: recargar para ver flashes
+          window.location.reload();
+        }
+      };
+      xhr.onerror = function(){
+        alert('Error durante la carga. Verifique su conexión.');
+        progressWrap.style.display = 'none';
+      };
+      xhr.send(data);
+    });
+  })();
+  </script>
+{% endblock %}
+
+

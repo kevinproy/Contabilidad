@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% block title %}Tabla Estado de Cuenta{% endblock %}
+{% block content %}
+  <section>
+    <h2>Tabla de Estado de Cuenta</h2>
+    <div class="card">
+      <form method="get" action="{{ url_for('estado.ver_tabla_estado_cuenta') }}" class="filters">
+        <div class="filter-row">
+          <div class="filter-item">
+            <label>Cliente</label>
+            <select name="cliente">
+              <option value="">Todos</option>
+              {% for c in clientes %}
+              <option value="{{ c }}" {% if cliente_val==c %}selected{% endif %}>{{ c }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>Inicio</label>
+            <input type="date" name="inicio" value="{{ inicio_val or '' }}">
+          </div>
+          <div class="filter-item">
+            <label>Fin</label>
+            <input type="date" name="fin" value="{{ fin_val or '' }}">
+          </div>
+          <div class="filter-item">
+            <label>Orden</label>
+            <select name="orden">
+              <option value="asc" {% if orden_val!='desc' %}selected{% endif %}>Ascendente</option>
+              <option value="desc" {% if orden_val=='desc' %}selected{% endif %}>Descendente</option>
+            </select>
+          </div>
+          <div class="filter-actions">
+            <button class="button" type="submit">Aplicar</button>
+            <a class="button secondary" href="{{ url_for('estado.ver_tabla_estado_cuenta') }}">Limpiar</a>
+          </div>
+        </div>
+      </form>
+      <form method="post" action="{{ url_for('vaciar_estado_cuenta') }}" onsubmit="return confirm('¿Está seguro de vaciar todos los registros?');" style="display:inline-block;margin-top:8px;">
+        <button class="button danger" type="submit">Vaciar Todo</button>
+      </form>
+    </div>
+    {% if cliente_val and grupos and grupos|length > 0 %}
+    
+    {% for grupo in grupos %}
+    <div class="card" style="margin-top:12px;">
+      <h3 style="margin:0 0 8px;">Cliente: {{ grupo.cliente }} <small style="font-weight:normal; color:#555;">(Registros: {{ grupo.registros|length }})</small></h3>
+      <div style="margin-bottom:8px; display:flex; gap:8px; flex-wrap:wrap;">
+        <form method="post" action="{{ url_for('limpiar_marcados', cliente=grupo.cliente) }}">
+          <button class="button danger" type="submit">Limpiar colores</button>
+        </form>
+        <form method="post" action="{{ url_for('limpiar_marcados_todos') }}">
+          <button class="button secondary" type="submit">Limpiar todos</button>
+        </form>
+        <a class="button" href="{{ url_for('exportar_estado_cuenta', cliente=grupo.cliente, inicio=inicio_val, fin=fin_val, orden=orden_val) }}">Descargar Excel</a>
+      </div>
+      <div class="cards-row" style="margin-top:0; margin-bottom:12px;">
+        <div class="stat-card income">
+          <div class="stat-icon">⬆️</div>
+          <div class="stat-main">{{ '{:,.2f}'.format(grupo.total_debe) }}</div>
+          <div class="stat-sub">Total Debe</div>
+        </div>
+        <div class="stat-card users">
+          <div class="stat-icon">⬇️</div>
+          <div class="stat-main">{{ '{:,.2f}'.format(grupo.total_haber) }}</div>
+          <div class="stat-sub">Total Haber</div>
+        </div>
+        <div class="stat-card birthday">
+          <div class="stat-icon">⚖️</div>
+          <div class="stat-main">{{ '{:,.2f}'.format(grupo.total_saldo) }}</div>
+          <div class="stat-sub">Total Saldo</div>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table data-cliente="{{ grupo.cliente }}" data-orden="{{ orden_val }}" class="reorder-table">
+          <thead>
+            <tr>
+              {% if headers %}
+                {% for h in headers %}
+                  {% if h == 'FECHA' %}
+                    <th class="sortable" data-sort="fecha">{{ h }}</th>
+                  {% else %}
+                    <th>{{ h }}</th>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                {% for col in columnas %}
+                  {% if col == 'FECHA' %}
+                    <th class="sortable" data-sort="fecha">{{ col }}</th>
+                  {% else %}
+                    <th>{{ col }}</th>
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in grupo.registros %}
+            <tr data-id="{{ row.get('ID') }}">
+              {% for col in columnas %}
+              {% set val = row.get(col, '') %}
+              {% set mark_key = 'MARK_' ~ col %}
+              {% if col in ['DEBE','HABER','SALDO'] %}
+                {% set markv = row.get(mark_key, 0) %}
+                <td class="num-cell {% if markv %}marked mark-{{ markv }}{% endif %}" data-val="{{ val }}" data-id="{{ row.get('ID') }}" data-col="{{ col }}">{{ val|es_num }}</td>
+              {% elif col == 'VENCIMIENTO' %}
+                {% set docto_txt = (row.get('DOCTO') or '') %}
+                {% set is_fp = docto_txt[:2] in ['FA','PG'] %}
+                <td class="venc-cell {% if row.get('VENCIDO') and is_fp %}overdue{% endif %}">{{ val }}</td>
+              {% elif col == 'DIAS' %}
+                {% set docto_txt = (row.get('DOCTO') or '') %}
+                {% set is_fp = docto_txt[:2] in ['FA','PG'] %}
+                <td class="venc-days {% if row.get('VENCIDO') and is_fp and (val|int) > 0 %}overdue{% endif %}">{{ val }}</td>
+              {% else %}
+                <td>{{ val }}</td>
+              {% endif %}
+              {% endfor %}
+              <td style="white-space:nowrap;">
+                <a class="button secondary" href="{{ url_for('editar_registro', registro_id=row.get('ID')) }}">Editar</a>
+                <form method="post" action="{{ url_for('eliminar_registro', registro_id=row.get('ID')) }}" style="display:inline-block" onsubmit="return confirm('¿Eliminar este registro?');">
+                  <button class="button danger" type="submit">Eliminar</button>
+                </form>
+                <form method="post" action="{{ url_for('anular_registro', registro_id=row.get('ID')) }}" style="display:inline-block" onsubmit="return confirm('¿Anular este registro y moverlo a Anuladas?');">
+                  <button class="button" type="submit">Anular</button>
+                </form>
+                {% if row.get('ID') %}
+                <form method="post" action="{{ url_for('mover_registro', cliente=grupo.cliente, registro_id=row.get('ID'), direccion='up') }}" style="display:inline-block">
+                  <button class="button" type="submit">▲</button>
+                </form>
+                <form method="post" action="{{ url_for('mover_registro', cliente=grupo.cliente, registro_id=row.get('ID'), direccion='down') }}" style="display:inline-block">
+                  <button class="button" type="submit">▼</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+    {% elif registros and registros|length > 0 %}
+    <div class="cards-row" style="margin-top:0; margin-bottom:12px;">
+      <div class="stat-card income">
+        <div class="stat-icon">⬆️</div>
+        <div class="stat-main">{{ '{:,.2f}'.format(total_debe) }}</div>
+        <div class="stat-sub">Total Debe</div>
+      </div>
+      <div class="stat-card users">
+        <div class="stat-icon">⬇️</div>
+        <div class="stat-main">{{ '{:,.2f}'.format(total_haber) }}</div>
+        <div class="stat-sub">Total Haber</div>
+      </div>
+      <div class="stat-card birthday">
+        <div class="stat-icon">⚖️</div>
+        <div class="stat-main">{{ '{:,.2f}'.format(total_saldo) }}</div>
+        <div class="stat-sub">Total Saldo</div>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table data-orden="{{ orden_val }}">
+        <thead>
+          <tr>
+            {% if headers %}
+              {% for h in headers %}
+                {% if h == 'FECHA' %}
+                  <th class="sortable" data-sort="fecha">{{ h }}</th>
+                {% else %}
+                  <th>{{ h }}</th>
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              {% for col in columnas %}
+                {% if col == 'FECHA' %}
+                  <th class="sortable" data-sort="fecha">{{ col }}</th>
+                {% else %}
+                  <th>{{ col }}</th>
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in registros %}
+          <tr>
+            {% for col in columnas %}
+            <td>{{ row.get(col, '') }}</td>
+            {% endfor %}
+            <td style="white-space:nowrap;">
+              <a class="button secondary" href="{{ url_for('editar_registro', registro_id=row.get('ID')) }}">Editar</a>
+              <form method="post" action="{{ url_for('eliminar_registro', registro_id=row.get('ID')) }}" style="display:inline-block" onsubmit="return confirm('¿Eliminar este registro?');">
+                <button class="button danger" type="submit">Eliminar</button>
+              </form>
+              <form method="post" action="{{ url_for('anular_registro', registro_id=row.get('ID')) }}" style="display:inline-block" onsubmit="return confirm('¿Anular este registro y moverlo a Anuladas?');">
+                <button class="button" type="submit">Anular</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="cards-row">
+      <div class="stat-card income">
+        <div class="stat-icon">⬆️</div>
+        <div class="stat-main">{{ '{:,.2f}'.format(total_debe) }}</div>
+        <div class="stat-sub">Total Debe</div>
+      </div>
+      <div class="stat-card users">
+        <div class="stat-icon">⬇️</div>
+        <div class="stat-main">{{ '{:,.2f}'.format(total_haber) }}</div>
+        <div class="stat-sub">Total Haber</div>
+      </div>
+      <div class="stat-card birthday">
+        <div class="stat-icon">⚖️</div>
+        <div class="stat-main">{{ '{:,.2f}'.format(total_saldo) }}</div>
+        <div class="stat-sub">Total Saldo</div>
+      </div>
+    </div>
+    {% else %}
+      {% if not cliente_val %}
+        <p>Seleccione un cliente para ver resultados.</p>
+      {% else %}
+        <p>No hay registros para el cliente seleccionado.</p>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}
+
+

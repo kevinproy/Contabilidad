@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Sistema Contable{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <aside class="sidebar">
+      <h1>Sistema Contable</h1>
+      {% if current_user %}
+      <div class="user-box">
+        <div class="user-name">{{ current_user.username }}</div>
+        <div class="user-role">{{ current_user.role }}</div>
+         <a class="logout" href="{{ url_for('auth.logout') }}">Cerrar sesión</a>
+      </div>
+      {% endif %}
+      <nav class="nav">
+        {% if current_user and current_user.is_master %}
+        <div class="nav-group open">
+          <button class="nav-group-toggle" data-target="group-admin">
+            <span class="icon" aria-hidden="true">🛡️</span>
+            <span class="label">Administración</span>
+            <span class="caret" aria-hidden="true"></span>
+          </button>
+          <div id="group-admin" class="nav-sub" style="display:block;">
+            <ul class="nav-sub-list">
+              <li><a class="nav-sub-link" href="{{ url_for('admin_users') }}">Usuarios y Permisos</a></li>
+            </ul>
+          </div>
+        </div>
+        {% endif %}
+        {% if can(PERM_DASHBOARD_VIEW) %}
+        <div class="nav-group">
+          <button class="nav-group-toggle" data-target="group-dashboard">
+            <span class="icon" aria-hidden="true">📊</span>
+            <span class="label">Dashboard</span>
+            <span class="caret" aria-hidden="true"></span>
+          </button>
+          <div id="group-dashboard" class="nav-sub">
+            <ul class="nav-sub-list">
+              <li><a class="nav-sub-link" href="{{ url_for('dashboard') }}">Ver Dashboard</a></li>
+            </ul>
+          </div>
+        </div>
+        {% endif %}
+        <div class="nav-group open">
+          <button class="nav-group-toggle" data-target="group-ec">
+            <span class="icon" aria-hidden="true">🧾</span>
+            <span class="label">Estado de Cuenta</span>
+            <span class="caret" aria-hidden="true"></span>
+          </button>
+          <div id="group-ec" class="nav-sub" style="display:block;">
+            <ul class="nav-sub-list">
+              {% if can(PERM_ESTADO_VIEW) %}
+                {% if can(PERM_ESTADO_UPLOAD) %}
+                <li><a class="nav-sub-link" href="{{ url_for('estado.submenu_estado_cuenta') }}">Cargar y Procesar</a></li>
+                {% endif %}
+                <li><a class="nav-sub-link" href="{{ url_for('estado.ver_tabla_estado_cuenta') }}">Ver Tabla</a></li>
+                {% if can(PERM_ESTADO_ANULADAS_VIEW) %}
+                <li><a class="nav-sub-link" href="{{ url_for('estado.ver_anuladas') }}">Anuladas</a></li>
+                {% endif %}
+                {% if can(PERM_ESTADO_SALDOS_MANAGE) %}
+                <li><a class="nav-sub-link" href="{{ url_for('ver_saldos_anteriores') }}">Saldos Anteriores</a></li>
+                {% endif %}
+                {% if can(PERM_ESTADO_PREFS_MANAGE) %}
+                <li><a class="nav-sub-link" href="{{ url_for('ver_prefs_clientes') }}">Preferencias (Días de Mora)</a></li>
+                {% endif %}
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+
+        {% if can(PERM_PLANILLA_VIEW) %}
+        <div class="nav-group">
+          <button class="nav-group-toggle" data-target="group-planilla">
+            <span class="icon" aria-hidden="true">👥</span>
+            <span class="label">Planilla de Sueldos</span>
+            <span class="caret" aria-hidden="true"></span>
+          </button>
+          <div id="group-planilla" class="nav-sub">
+            <ul class="nav-sub-list">
+              <li><a class="nav-sub-link" href="{{ url_for('modulo_planilla') }}">Planilla (inicio)</a></li>
+              {% if can(PERM_PLANILLA_EMPL_VIEW) %}
+              <li><a class="nav-sub-link" href="{{ url_for('planilla_empleados') }}">Registro de Trabajadores</a></li>
+              {% endif %}
+              {% if can(PERM_PLANILLA_PERIODO_VIEW) %}
+              <li><a class="nav-sub-link" href="{{ url_for('planilla_periodo') }}">Planilla mensual</a></li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if can(PERM_COMISIONES_VIEW) %}
+        <div class="nav-group">
+          <button class="nav-group-toggle" data-target="group-comisiones">
+            <span class="icon" aria-hidden="true">💹</span>
+            <span class="label">Comisiones</span>
+            <span class="caret" aria-hidden="true"></span>
+          </button>
+          <div id="group-comisiones" class="nav-sub">
+            <span class="nav-sub-item disabled">Próximamente</span>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if can(PERM_DIM_VIEW) %}
+        <div class="nav-group">
+          <button class="nav-group-toggle" data-target="group-dim">
+            <span class="icon" aria-hidden="true">📊</span>
+            <span class="label">Datos DIM</span>
+            <span class="caret" aria-hidden="true"></span>
+          </button>
+          <div id="group-dim" class="nav-sub">
+            <span class="nav-sub-item disabled">Próximamente</span>
+          </div>
+        </div>
+        {% endif %}
+      </nav>
+    </aside>
+    <main class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+        </div>
+      {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+  </html>
+
+

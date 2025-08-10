@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Editar Registro{% endblock %}
+{% block content %}
+  <section>
+    <h2>Editar Registro</h2>
+    <div class="card">
+      <form method="post" action="{{ url_for('editar_registro_post', registro_id=registro.ID) }}">
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+          {% for campo in ['CLIENTE','FECHA','DOCTO','DETALLE','DEBE','HABER','SALDO','INT. AG.','DIM','CONDICION DE PAGO'] %}
+            <div>
+              <label>{{ campo }}</label>
+              <input name="{{ campo }}" value="{{ registro[campo] or '' }}">
+            </div>
+          {% endfor %}
+        </div>
+        <div style="margin-top:12px;">
+          <button class="button" type="submit">Guardar</button>
+          <a class="button secondary" href="{{ url_for('estado.ver_tabla_estado_cuenta') }}">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </section>
+{% endblock %}
+
+
+

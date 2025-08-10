@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Movimientos Anulados{% endblock %}
+{% block content %}
+  <section>
+    <h2>Movimientos Anulados</h2>
+    {% if registros and registros|length > 0 %}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            {% for col in columnas %}
+            <th>{{ col }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in registros %}
+          <tr>
+            {% for col in ['FECHA','DOCTO','DETALLE','INT. AG.','DIM','DEBE','HABER','SALDO','ANULADO_EN'] %}
+            <td>{{ row.get(col, '') }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <p>No hay registros anulados.</p>
+    {% endif %}
+  </section>
+{% endblock %}
+
+

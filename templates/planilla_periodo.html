@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}Planilla Mensual{% endblock %}
+{% block content %}
+<section>
+  <h2>Planilla Mensual</h2>
+<div class="card">
+  <form method="get" action="{{ url_for('planilla_periodo') }}" style="display:flex; gap:8px; align-items:center;">
+    <label>Periodo</label>
+    <select name="periodo">
+      {% set month_names = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'] %}
+      {% for m in months %}
+      {% set mi = (m[4:]|int) - 1 %}
+      <option value="{{ m }}" {% if periodo==m %}selected{% endif %}>{{ month_names[mi] }}</option>
+      {% endfor %}
+    </select>
+    <button class="button" type="submit">Abrir</button>
+  </form>
+  <form method="post" action="{{ url_for('planilla_snapshot') }}" style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+    <input type="hidden" name="periodo" value="{{ periodo }}">
+    <button class="button" type="submit">Guardar planilla</button>
+  </form>
+</div>
+
+  {% if periodo %}
+  <!-- Formulario manual removido a pedido. Edición es directamente en la tabla (doble click). -->
+  <div class="card" style="margin-top:12px; padding:8px;">
+    <em>Consejo: haga doble click en las celdas editables (DIAS TRAB, BONO ANTIGUE., OTROS INGRESOS, AP. SOLI, QUINCENA, ANTICIPOS, PTAMOS, ENTEL, OTROS, ATRASOS, RC-IVA) para guardar al instante.</em>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <table id="tablaPlanilla" data-periodo="{{ periodo }}">
+      <thead>
+        <tr>
+          <th>N°</th><th>CARNET</th><th>NOMBRES Y APELLIDOS</th><th>CARGO</th><th>CUA</th><th>CNS</th><th>DIAS TRAB</th><th>CNS PATRONAL</th><th>FECHA INGRESO</th><th>HABER BASICO</th><th>BONO ANTIGUE.</th><th>OTROS INGRESOS</th><th>TOTAL GANADO</th><th>AFP 12.71 %</th><th>AP. SOLI</th><th>QUINCENA</th><th>ANTICIPOS</th><th>PTAMOS</th><th>ENTEL</th><th>OTROS</th><th>ATRASOS</th><th>RC-IVA</th><th>TOTAL AFPs</th><th>TOTAL ANTICIPOS</th><th>TOTAL DESCUETS</th><th>TOTAL AFP+ANT+DES</th><th>LIQ. PAGABLE</th><th>RC.IVA ACUM</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in rows %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ it['carnet'] }}</td>
+          <td>{{ it['nombres_apellidos'] }}</td>
+          <td>{{ it['cargo'] }}</td>
+          <td>{{ it['cua'] }}</td>
+          <td>{{ it['cns'] }}</td>
+          <td class="pl-edit" data-field="dias_trab" data-id="{{ it['id_empleado'] }}">{{ it['dias_trab'] }}</td>
+          <td>{{ it['cns_patronal'] }}</td>
+          <td>{{ it['fecha_ingreso'] }}</td>
+          <td>{{ it['haber_basico']|es_num }}</td>
+          <td class="pl-edit" data-field="bono_antiguedad" data-id="{{ it['id_empleado'] }}">{{ it['bono_antiguedad']|es_num }}</td>
+          <td class="pl-edit" data-field="otros_ingresos" data-id="{{ it['id_empleado'] }}">{{ it['otros_ingresos']|es_num }}</td>
+          <td class="pl-calc" data-field="total_ganado">{{ it['total_ganado']|es_num }}</td>
+          <td class="pl-calc" data-field="afp_1271">{{ it['afp_1271']|es_num }}</td>
+          <td class="pl-edit" data-field="ap_solidario" data-id="{{ it['id_empleado'] }}">{{ it['ap_solidario']|es_num }}</td>
+          <td class="pl-edit" data-field="quincena" data-id="{{ it['id_empleado'] }}">{{ it['quincena']|es_num }}</td>
+          <td class="pl-edit" data-field="anticipos" data-id="{{ it['id_empleado'] }}">{{ it['anticipos']|es_num }}</td>
+          <td class="pl-edit" data-field="prestamos" data-id="{{ it['id_empleado'] }}">{{ it['prestamos']|es_num }}</td>
+          <td class="pl-edit" data-field="entel" data-id="{{ it['id_empleado'] }}">{{ it['entel']|es_num }}</td>
+          <td class="pl-edit" data-field="otros_desc" data-id="{{ it['id_empleado'] }}">{{ it['otros_desc']|es_num }}</td>
+          <td class="pl-edit" data-field="atrasos" data-id="{{ it['id_empleado'] }}">{{ it['atrasos']|es_num }}</td>
+          <td class="pl-edit" data-field="rc_iva" data-id="{{ it['id_empleado'] }}">{{ it['rc_iva']|es_num }}</td>
+          <td class="pl-calc" data-field="total_afps">{{ it['total_afps']|es_num }}</td>
+          <td class="pl-calc" data-field="total_anticipos">{{ it['total_anticipos']|es_num }}</td>
+          <td class="pl-calc" data-field="total_desc">{{ it['total_desc']|es_num }}</td>
+          <td class="pl-calc" data-field="total_afp_ant_desc">{{ it['total_afp_ant_desc']|es_num }}</td>
+          <td class="pl-calc" data-field="liquido_pagable">{{ it['liquido_pagable']|es_num }}</td>
+          <td>{{ it['rc_iva_acum']|es_num }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if totals %}
+  <div class="card" style="margin-top:8px;">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:right">Totales</th>
+          <th>HABER BASICO</th><th>BONO ANTIGUE.</th><th>OTROS INGRESOS</th><th>TOTAL GANADO</th><th>AFP 12.71 %</th>
+          <th>AP. SOLI</th><th>QUINCENA</th><th>ANTICIPOS</th><th>PTAMOS</th><th>ENTEL</th><th>OTROS</th><th>ATRASOS</th><th>RC-IVA</th>
+          <th>TOTAL AFPs</th><th>TOTAL ANTICIPOS</th><th>TOTAL DESCUETS</th><th>TOTAL AFP+ANT+DES</th><th>LIQ. PAGABLE</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td></td>
+          <td>{{ totals.haber_basico|es_num }}</td>
+          <td>{{ totals.bono_antiguedad|es_num }}</td>
+          <td>{{ totals.otros_ingresos|es_num }}</td>
+          <td>{{ totals.total_ganado|es_num }}</td>
+          <td>{{ totals.afp_1271|es_num }}</td>
+          <td>{{ totals.ap_solidario|es_num }}</td>
+          <td>{{ totals.quincena|es_num }}</td>
+          <td>{{ totals.anticipos|es_num }}</td>
+          <td>{{ totals.prestamos|es_num }}</td>
+          <td>{{ totals.entel|es_num }}</td>
+          <td>{{ totals.otros_desc|es_num }}</td>
+          <td>{{ totals.atrasos|es_num }}</td>
+          <td>{{ totals.rc_iva|es_num }}</td>
+          <td>{{ totals.total_afps|es_num }}</td>
+          <td>{{ totals.total_anticipos|es_num }}</td>
+          <td>{{ totals.total_desc|es_num }}</td>
+          <td>{{ totals.total_afp_ant_desc|es_num }}</td>
+          <td>{{ totals.liquido_pagable|es_num }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  <script>
+  (function(){
+    const table = document.getElementById('tablaPlanilla');
+    if (!table) return;
+    const periodo = table.getAttribute('data-periodo');
+    table.querySelectorAll('td.pl-edit').forEach((td) => {
+      td.addEventListener('dblclick', () => startEdit(td));
+    });
+    function startEdit(td){
+      if (td.querySelector('input')) return;
+      const original = td.textContent.trim();
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = original.replaceAll('.', '').replace(',', '.');
+      input.style.width = '90%';
+      td.innerHTML = '';
+      td.appendChild(input);
+      input.focus();
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); });
+      input.addEventListener('blur', save);
+      function cancel(){ td.textContent = original; }
+      function save(){
+        const value = input.value;
+        const payload = { periodo, id_empleado: td.getAttribute('data-id'), field: td.getAttribute('data-field'), value };
+        fetch('/planilla/periodo/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+          .then(r => r.json())
+          .then(resp => {
+            if (!resp || resp.ok === false) { cancel(); return; }
+            // pintar valor editado
+            td.textContent = value;
+            // actualizar cálculos visibles
+            const calc = resp.calc || {};
+            for (const k of ['total_ganado','afp_1271','total_afps','total_anticipos','total_desc','total_afp_ant_desc','liquido_pagable']){
+              const cell = td.parentElement.querySelector(`td.pl-calc[data-field="${k}"]`);
+              if (cell) cell.textContent = new Intl.NumberFormat('es-ES', { minimumFractionDigits:2, maximumFractionDigits:2 }).format(calc[k]||0);
+            }
+            toast('Guardado');
+            // Garantizar que todo quede consistente: refrescar fila/página
+            setTimeout(() => window.location.reload(), 300);
+          })
+          .catch(() => { cancel(); toast('Error al guardar'); });
+      }
+    }
+    function toast(msg){
+      const t = document.createElement('div');
+      t.className='toast';
+      t.textContent=msg;
+      document.body.appendChild(t);
+      setTimeout(()=> t.remove(), 1500);
+    }
+  })();
+  </script>
+  {% endif %}
+</section>
+{% endblock %}
+
+

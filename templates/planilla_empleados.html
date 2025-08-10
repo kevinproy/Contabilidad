@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}Trabajadores{% endblock %}
+{% block content %}
+<section>
+  <h2>Registro de Trabajadores</h2>
+  <div class="card">
+    <button id="btnNuevo" class="button">＋ Nuevo trabajador</button>
+    <dialog id="dlgEmpleado">
+      <form method="post" action="{{ url_for('planilla_empleados_post') }}" id="frmEmpleado" style="min-width:820px">
+        <div class="modal-header">
+          <div class="modal-title">Nuevo trabajador</div>
+          <button type="button" class="modal-close" id="btnCerrarTop">✕</button>
+        </div>
+        <div class="form-grid">
+          <label>CARNET</label>
+          <input name="carnet" required>
+          <label>Nombres y Apellidos</label>
+          <input name="nombres" required>
+          <label>Cargo</label>
+          <input name="cargo">
+          <label>CUA</label>
+          <input name="cua">
+          <label>CNS</label>
+          <input name="cns">
+          <label>CNS Patronal</label>
+          <input name="cns_patronal">
+          <label>Fecha Ingreso</label>
+          <input type="date" name="fecha_ingreso">
+          <label>Haber Básico</label>
+          <input type="number" step="0.01" name="haber_basico" value="0">
+        </div>
+        <div class="form-actions">
+          <button class="button" type="submit">Guardar</button>
+          <button class="button secondary" type="button" id="btnCerrar">Cancelar</button>
+        </div>
+      </form>
+    </dialog>
+  </div>
+  <div class="card" style="margin-top:12px;">
+    <table id="tablaEmpleados">
+      <thead>
+        <tr>
+          <th>CARNET</th><th>Nombre</th><th>Cargo</th><th>CUA</th><th>CNS</th><th>CNS Patronal</th><th>Ingreso</th><th>Haber Básico</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in empleados %}
+        <tr>
+          <td>{{ e['carnet'] }}</td>
+          <td>{{ e['nombres_apellidos'] }}</td>
+          <td>{{ e['cargo'] }}</td>
+          <td>{{ e['cua'] }}</td>
+          <td>{{ e['cns'] }}</td>
+          <td>{{ e['cns_patronal'] }}</td>
+          <td>{{ e['fecha_ingreso'] }}</td>
+          <td>{{ e['haber_basico']|es_num }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <script>
+  (function(){
+    const btnNuevo = document.getElementById('btnNuevo');
+    const dlg = document.getElementById('dlgEmpleado');
+    const frm = document.getElementById('frmEmpleado');
+    const tabla = document.getElementById('tablaEmpleados').querySelector('tbody');
+    if (btnNuevo && dlg) {
+      btnNuevo.addEventListener('click', () => dlg.showModal());
+      document.getElementById('btnCerrar').addEventListener('click', () => dlg.close());
+      document.getElementById('btnCerrarTop').addEventListener('click', () => dlg.close());
+      frm.addEventListener('submit', function(e){
+        e.preventDefault();
+        const data = new FormData(frm);
+        fetch(frm.action, { method: 'POST', body: data, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(r => r.json())
+          .then(resp => {
+            if (!resp || resp.ok === false) return;
+            const e = resp.empleado;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${e.carnet||''}</td><td>${e.nombres_apellidos||''}</td><td>${e.cargo||''}</td><td>${e.cua||''}</td><td>${e.cns||''}</td><td>${e.cns_patronal||''}</td><td>${e.fecha_ingreso||''}</td><td>${Number(e.haber_basico||0).toFixed(2)}</td>`;
+            tabla.appendChild(tr);
+            dlg.close();
+            frm.reset();
+            toast('Empleado guardado');
+          })
+          .catch(()=>{});
+      });
+    }
+    function toast(msg){
+      const t = document.createElement('div');
+      t.className='toast';
+      t.textContent=msg;
+      document.body.appendChild(t);
+      setTimeout(()=> t.remove(), 2000);
+    }
+  })();
+  </script>
+</section>
+{% endblock %}
+
+
