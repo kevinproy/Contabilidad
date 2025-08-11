@@ -11,24 +11,25 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(BASE_DIR, os.pardir))
 
 
-def load_env() -> None:
-    try:
-        from dotenv import load_dotenv
-        load_dotenv(dotenv_path=os.path.join(BASE_DIR, ".env"), override=True)
-    except Exception:
-        pass
+# En Render, las variables de entorno ya están disponibles y no se necesita .env
+# La lógica de mapeo DB_* a PG* y SSL se manejará directamente en db_connect.
+# La función load_env ya no es necesaria.
 
 
 def db_connect():
-    load_env()
     cfg: Dict[str, Any] = {
-        "host": os.environ.get("PGHOST", "localhost"),
-        "port": int(os.environ.get("PGPORT", "5432")),
-        "dbname": os.environ.get("PGDATABASE", "postgres"),
-        "user": os.environ.get("PGUSER", "postgres"),
-        "password": os.environ.get("PGPASSWORD", "postgres"),
+        "host": os.environ.get("DB_HOST"),
+        "port": int(os.environ.get("DB_PORT", "5432")),
+        "dbname": os.environ.get("DB_NAME"),
+        "user": os.environ.get("DB_USER"),
+        "password": os.environ.get("DB_PASSWORD"),
     }
-    return psycopg.connect(**cfg, row_factory=dict_row)
+    # For Supabase, require SSL by default if not specified
+    host = os.environ.get("DB_HOST", "")
+    if ("supabase.com" in host) and not os.environ.get("PGSSLMODE"):
+        cfg["sslmode"] = "require"
+    
+    return psycopg.connect(**cfg, row_factory=dict_row, prepare_threshold=None)
 
 
 def ensure_db_schema() -> None:
